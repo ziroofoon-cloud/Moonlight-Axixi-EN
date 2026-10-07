@@ -1,0 +1,52 @@
+name: build
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      # this repo: contains AxixiTranslate.zip
+      - uses: actions/checkout@v4
+
+      # the app source (with its native submodule)
+      - name: Get Moonlight Axixi source
+        uses: actions/checkout@v4
+        with:
+          repository: Axixi2233/moonlight-android
+          path: src
+          submodules: recursive
+
+      - name: Apply English + Persian translation
+        run: |
+          unzip -q AxixiTranslate.zip -d tr
+          python3 tr/AxixiTranslate/apply.py src
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Prepare Android SDK / NDK
+        run: |
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKM="$(ls -d "$SDK"/cmdline-tools/*/bin/sdkmanager | head -n 1)"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-34" "build-tools;34.0.0" "ndk;27.0.12077973" > /dev/null || true
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build APK
+        working-directory: src
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleNonRootDebug --no-daemon --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MoonlightAxixi-EN-FA-apk
+          path: src/app/build/outputs/apk/nonRoot/debug/*.apk
