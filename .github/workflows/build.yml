@@ -1,7 +1,7 @@
 name: build
 on:
   push:
-    branches: [main, master]
+    branches: [Bubble, master]
   workflow_dispatch: {}
 permissions:
   contents: read
